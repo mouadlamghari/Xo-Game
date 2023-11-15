@@ -95,7 +95,7 @@
     let web,id,ChaineId,message,chaine,role,winIndex
     let currentRole='X'
     
-    web = new WebSocket('ws://192.168.1.15/')
+    web = new WebSocket('ws://https://mouad.onrender.com/')
     web.onmessage=({data})=>{
         message=JSON.parse(data)
         console.log(message.method)
