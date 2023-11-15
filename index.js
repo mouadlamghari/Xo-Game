@@ -106,6 +106,6 @@ let Win=(cells)=>{
     }
 }
 
-Server.listen(80,'192.168.1.15',()=>{
+Server.listen('https://mouad.onrender.com',()=>{
     console.log('etablish')
 })
