@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@900&display=swap');
+
+        *{
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            font-family: 'Lato', sans-serif;
+        }
+        .board{
+            width: 300px;
+            height: 300px;
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            grid-template-rows: repeat(3,1fr);
+            gap:10px;
+            background-color: none;
+        }
+        .board .box{
+            border: 5px solid #333;
+            border-radius: 16px;
+            background-color: #fff;
+        }
+        .box{
+            color:#FFF;
+            font-size: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+
+        }
+        .board .box:not(.activecell):hover{
+            scale: 1.1;
+            transition: .7s  scale ease-in-out;
+            background-color: #7e7a7a;
+        }
+        
+        .activecell{
+            background-color: #7e7a7a !important;
+        }
+
+        body{
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .btn{
+            background-color: #333;
+            border-radius: 6px;
+            color: #fff;
+            padding: 6px 12px;
+            cursor: pointer;
+            border: none;
+        }
+        input {
+            width: 100%;
+        }
+        .inputdiv{
+            display: flex;            
+            
+        }
+        .inputdiv button{
+            all:unset;
+            padding: 5px 15px;
+            background-color: #333;
+            border: none;
+            color: white;
+            cursor: pointer;
+            
+        }
+        .data{
+            display: flex;
+            gap: 25px;
+        }
+        
+    </style>
+</head>
+<body>
+
+</body>
+<script>
+    let web,id,ChaineId,message,chaine,role,winIndex
+    let currentRole='X'
+    
+    web = new WebSocket('ws://192.168.1.15/')
+    web.onmessage=({data})=>{
+        message=JSON.parse(data)
+        console.log(message.method)
+        switch(message.method){
+            case 'connect':
+                id=message.id
+                break
+            case 'create':
+                ChaineId=message.chaineId
+                dataField()
+                break
+            case 'join':
+                chaine=message.chaine
+                EnterGame()
+                Drawbord()
+                break
+            case "play" :
+                chaine=message.chaine
+                currentRole=message.chaine.current
+                Drawbord()
+                break
+            case "win":
+                winIndex=message.winner
+                win()
+                break
+                
+            default:
+                console.log('hada ghir default')
+        }
+    }
+    let path = window.location.pathname
+    const btn = document.createElement('button')
+    btn.className='btn'
+    if(path=='/'){
+        btn.textContent='create'
+        btn.addEventListener('click',()=>{
+            web.send(JSON.stringify({method:'create'}))
+        })
+    }
+    else{
+        ChaineId=path.slice(1)
+        btn.className='join btn'
+        btn.textContent='join'
+        btn.addEventListener('click',joinAction)
+    }
+    document.body.append(btn)
+
+
+    function EnterGame (){  
+        // define role of both players    
+        role= chaine.users.find(e=>e.idUser==id).role  
+        roleAdvairsair = chaine.users.length==2 ? chaine.users.find(e=>e.idUser!==id).role : 'Waitning to join' 
+        // delete join button and header and 
+        let join = document.querySelector('.join')
+        let data = document.querySelector('.data')
+        let inputCopy = document.querySelector('.inputdiv')
+        console.log(inputCopy)
+        join && document.body.removeChild(join)
+        inputCopy && document.body.removeChild(inputCopy)
+        data && document.body.removeChild(data)
+        // create role header
+        let items = document.createElement('div')
+        items.className='data'
+        let InfoPlayer = document.createElement('div')
+        InfoPlayer.className='player'
+        let InfoAdversair = document.createElement('div')
+        InfoAdversair.className='player'
+        InfoPlayer.textContent=` you : ${role}`
+        InfoAdversair.textContent=` advairsair : ${roleAdvairsair}`
+        // append role header
+        items.append(InfoPlayer,InfoAdversair)
+        document.body.prepend(items)
+    }
+
+
+
+
+    function joinAction(){
+            web.send(JSON.stringify({"method":"join",ChaineId,userId:id}))
+    }
+
+
+
+    function win(){
+        let banner = document.createElement('div')
+        banner.textContent=` ${winIndex} win  `
+        document.body.append(banner)
+    }
+
+
+
+    function dataField(){
+        // delete button create
+        btn.style.display='none'
+
+        // create input and button
+        let container = document.createElement('div')
+        let copy = document.createElement('button')
+        copy.innerText='Copy'
+        container.className='inputdiv'
+        let input  = document.createElement('input')
+        input.value=ChaineId
+        input.readOnly=true
+
+        // code to copy input value
+        copy.addEventListener('click',()=>{
+            console.log(navigator)
+            navigator.clipboard.writeText(input.value)
+        })
+
+        // create join item 
+        let join = document.createElement('button')
+        join.textContent='join'
+        join.className='join btn'
+        join.addEventListener('click',joinAction)
+    
+        // add input and button
+        container.append(input,copy)
+        document.body.append(container,join)
+    }
+
+
+
+    function play(e,i){
+        // check role if equal to current role
+        console.log(winIndex)
+        if(chaine.users.length==2 && currentRole==role && !winIndex){
+            let payload=JSON.stringify({
+                method:'play',
+                point:i,
+                idUser:id,
+                ChaineId
+            })
+            web.send(payload)
+            currentRole=currentRole==='X'?'O':'X'
+        }
+    }
+
+
+    function Drawbord(){
+        
+        // delete board
+        document.querySelector('.board')?.remove()
+
+        // create board 
+        let bord = document.createElement('div')
+        bord.className='board'
+        Array.from(Array(9)).map((e,i)=>{
+            let box = document.createElement('div')
+            box.className='box'
+            if(chaine?.cells[i]){
+                box.textContent=chaine.cells[i]
+                box.classList.add('activecell')
+            }
+            else{
+                box.addEventListener('click',(e)=>play(e,i))
+            }
+            bord.append(box)
+        })        
+        document.body.append(bord)
+    }
+</script>
+</html>
